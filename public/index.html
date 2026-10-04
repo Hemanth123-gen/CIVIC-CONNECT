@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicPulse (जनसमाधान) — Smart Civic Issues Resolution & Priority Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- App Header (EduResolve Style) -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="header-logo-badge">
+        <span class="logo-icon">🏛️</span>
+      </div>
+      <div class="header-brand-info">
+        <div class="header-brand-title">CivicPulse <span class="brand-hi">जनसमाधान</span></div>
+        <span class="header-subtitle">AI-Powered Civic Redressal & CIPI™ Triage System</span>
+      </div>
+    </div>
+
+    <div class="header-search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="globalSearchInput" placeholder="Search by issue, tracking ID, ward or landmark..." autocomplete="off">
+    </div>
+
+    <div class="header-right">
+      <div class="header-status-chip">
+        <span class="pulse-dot"></span>
+        <span class="status-label">SQLite Live</span>
+      </div>
+
+      <div class="header-role-switcher">
+        <span class="role-icon">👤</span>
+        <select id="userRoleSelect" title="Switch User Role">
+          <option value="citizen">Ramesh Kumar (Citizen)</option>
+          <option value="officer">Er. Rajesh Sharma (Municipal Engineer)</option>
+          <option value="sarpanch">Smt. Kavitha (Village Sarpanch)</option>
+        </select>
+      </div>
+
+      <button class="header-report-btn" id="openReportModalBtn">
+        <span>➕ Report Issue</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Tab Bar (EduResolve Style) -->
+  <nav class="app-nav-tabs">
+    <div class="nav-tabs-container">
+      <button class="nav-tab-item active" data-tab="feedTab">
+        <span class="tab-icon">📢</span> Citizen Feed & Triage
+      </button>
+      <button class="nav-tab-item" data-tab="authorityTab">
+        <span class="tab-icon">🛡️</span> Authority Command Center
+      </button>
+      <button class="nav-tab-item" data-tab="mapTab">
+        <span class="tab-icon">🗺️</span> Live GIS Radar Map
+      </button>
+      <button class="nav-tab-item" data-tab="myReportsTab">
+        <span class="tab-icon">📋</span> My Grievances & Vouched
+      </button>
+      <button class="nav-tab-item" data-tab="transparencyTab">
+        <span class="tab-icon">📊</span> Public Transparency & Scorecard
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="app-main-content">
+
+    <!-- KPI Metric Cards Grid -->
+    <section class="kpi-grid">
+      <div class="kpi-card critical-border">
+        <div class="kpi-header">
+          <span class="kpi-title">Critical Emergencies (CIPI > 75)</span>
+          <span class="kpi-badge badge-red">IMMEDIATE SLA</span>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-number text-red" id="kpiCritical">0</div>
+          <span class="kpi-subtext">Active life safety hazards requiring dispatch</span>
+        </div>
+      </div>
+
+      <div class="kpi-card alert-border">
+        <div class="kpi-header">
+          <span class="kpi-title">Active Reported Incidents</span>
+          <span class="kpi-badge badge-amber">CLUSTERED</span>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-number text-amber" id="kpiActive">0</div>
+          <span class="kpi-subtext">Aggregated across all 4 municipal wards</span>
+        </div>
+      </div>
+
+      <div class="kpi-card green-border">
+        <div class="kpi-header">
+          <span class="kpi-title">Community Corroboration</span>
+          <span class="kpi-badge badge-green">TRUST SCORE 94%</span>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-number text-green" id="kpiVouches">0</div>
+          <span class="kpi-subtext">"I Face This Too" citizen verifications</span>
+        </div>
+      </div>
+
+      <div class="kpi-card blue-border">
+        <div class="kpi-header">
+          <span class="kpi-title">Quorum Resolution Rate</span>
+          <span class="kpi-badge badge-blue">SLA 14.2h AVG</span>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-number text-blue" id="kpiResolutionRate">0%</div>
+          <span class="kpi-subtext">Signed off with Before/After visual proof</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 1: Citizen Feed & Triage View -->
+    <section class="tab-panel active" id="feedTab">
+      
+      <!-- Filter Bar -->
+      <div class="filter-toolbar">
+        <div class="category-pills" id="categoryPillList">
+          <button class="cat-pill active" data-cat="ALL">All Categories</button>
+          <button class="cat-pill" data-cat="WATER">🚰 Water & Sewage</button>
+          <button class="cat-pill" data-cat="ROADS">🛣️ Roads & Transport</button>
+          <button class="cat-pill" data-cat="ELECTRICITY">⚡ Electricity</button>
+          <button class="cat-pill" data-cat="SANITATION">🧹 Solid Waste</button>
+          <button class="cat-pill" data-cat="SAFETY">🏥 Public Hazards</button>
+        </div>
+
+        <div class="filter-dropdowns">
+          <div class="filter-group">
+            <label>Ward:</label>
+            <select id="filterWard">
+              <option value="ALL">All Wards / Villages</option>
+              <option value="Ward 1 - Rampur Rural">Ward 1 - Rampur Rural</option>
+              <option value="Ward 2 - Hospital Zone">Ward 2 - Hospital Zone</option>
+              <option value="Ward 3 - Gandhi Bazaar">Ward 3 - Gandhi Bazaar</option>
+              <option value="Ward 4 - Green Valley Colony">Ward 4 - Green Valley</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Status:</label>
+            <select id="filterStatus">
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending Triage</option>
+              <option value="DISPATCHED">Crew Dispatched</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="PENDING_VERIFICATION">Awaiting Citizen Quorum</option>
+              <option value="RESOLVED">Verified Resolved</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Sort By:</label>
+            <select id="sortOrder">
+              <option value="cipi">⚡ CIPI Priority (Highest First)</option>
+              <option value="vouches">🔥 Most Community Vouches</option>
+              <option value="date">🕒 Newest First</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Hero Bar -->
+      <div class="action-banner">
+        <div class="action-banner-text">
+          <h3>📢 Faced a civic issue in your community or village?</h3>
+          <p>Report in 30 seconds with photo, automatic GPS geofencing, and multilingual voice description.</p>
+        </div>
+        <div class="action-banner-btns">
+          <button class="btn btn-primary" id="openReportWizardBtn">
+            <span>📷 Snap & Report Issue</span>
+          </button>
+          <button class="btn btn-secondary" id="openVoiceModalBtn">
+            <span>🎤 Vernacular Voice Input</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Incident Card Grid -->
+      <div class="incidents-container">
+        <div class="incidents-header-info">
+          <h4>Active Community Grievances (<span id="incidentCount">0</span>)</h4>
+          <span class="cipi-explainer-chip" title="Dynamic Civic Impact Priority Index: Combines Hazard Severity, Population Density, Vulnerability Proximity, Citizen Vouches & Age Escalation">
+            ℹ️ Prioritized by CIPI™ Algorithm
+          </span>
+        </div>
+
+        <div class="incidents-grid" id="incidentsGrid">
+          <!-- Dynamically populated via JS -->
+          <div class="loading-state">Loading civic grievances...</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: Authority Command Center -->
+    <section class="tab-panel" id="authorityTab">
+      <div class="authority-banner">
+        <div class="authority-badge-box">
+          <span class="auth-icon">🛡️</span>
+          <div>
+            <h3>Official Triage & Field Crew Dispatch Console</h3>
+            <p>Priority ranking calculated by 5-factor CIPI algorithm. High-risk life hazards automatically prioritized.</p>
+          </div>
+        </div>
+        <div class="auth-summary-stats">
+          <div class="auth-stat-pill red-pill">
+            <span class="stat-num" id="authRedCount">0</span>
+            <span class="stat-lbl">Breach Risk (< 4h SLA)</span>
+          </div>
+          <div class="auth-stat-pill amber-pill">
+            <span class="stat-num" id="authAmberCount">0</span>
+            <span class="stat-lbl">In Field Work</span>
+          </div>
+          <div class="auth-stat-pill green-pill">
+            <span class="stat-num" id="authVerificationCount">0</span>
+            <span class="stat-lbl">Pending Citizen Sign-off</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="authority-table-wrapper">
+        <table class="authority-table">
+          <thead>
+            <tr>
+              <th>CIPI Priority</th>
+              <th>Tracking ID</th>
+              <th>Incident Details</th>
+              <th>Ward & Location</th>
+              <th>Assigned Department</th>
+              <th>SLA Status</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="authorityTableBody">
+            <!-- Dynamically populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 3: Live GIS Radar Map -->
+    <section class="tab-panel" id="mapTab">
+      <div class="map-controls-bar">
+        <div class="map-legend">
+          <span class="legend-item"><span class="legend-dot red-dot"></span> CIPI > 75 (Critical Emergency)</span>
+          <span class="legend-item"><span class="legend-dot amber-dot"></span> CIPI 50–74 (High / Moderate)</span>
+          <span class="legend-item"><span class="legend-dot green-dot"></span> Verified Resolved</span>
+        </div>
+        <div class="map-actions">
+          <button class="btn btn-sm btn-outline" id="centerMapBtn">📍 Recenter Jurisdiction</button>
+        </div>
+      </div>
+      <div id="civicMap" class="civic-map-view"></div>
+    </section>
+
+    <!-- TAB 4: My Grievances & Vouched -->
+    <section class="tab-panel" id="myReportsTab">
+      <div class="my-reports-banner">
+        <h3>📋 My Reported & Vouched Incidents</h3>
+        <p>Track the real-time resolution timeline of your community contributions.</p>
+      </div>
+      <div class="incidents-grid" id="myIncidentsGrid">
+        <!-- Dynamically populated via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 5: Public Transparency Hub -->
+    <section class="tab-panel" id="transparencyTab">
+      <div class="transparency-hero">
+        <h3>📊 Public Governance & Civic Accountability Radar</h3>
+        <p>100% open public record. Track department resolution speed, fund efficiency, and ward responsiveness.</p>
+      </div>
+
+      <div class="transparency-grid">
+        <!-- Ward Leaderboard -->
+        <div class="scorecard-card">
+          <h4>🏆 Ward Infrastructure & Cleanliness Leaderboard</h4>
+          <div class="ward-score-list" id="wardScoreList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Department SLA Scorecard -->
+        <div class="scorecard-card">
+          <h4>⚡ Department Resolution SLA Compliance</h4>
+          <div class="dept-score-list">
+            <div class="dept-score-item">
+              <div class="dept-name-row">
+                <span>⚡ State Electricity Distribution Board (DISCOM)</span>
+                <span class="score-pct text-green">94.8% on-time</span>
+              </div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill fill-green" style="width: 94.8%;"></div></div>
+            </div>
+
+            <div class="dept-score-item">
+              <div class="dept-name-row">
+                <span>🚰 Panchayat & Rural Water Supply (PRWSD)</span>
+                <span class="score-pct text-blue">89.2% on-time</span>
+              </div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill fill-blue" style="width: 89.2%;"></div></div>
+            </div>
+
+            <div class="dept-score-item">
+              <div class="dept-name-row">
+                <span>🛣️ Public Works Department (PWD - Roads)</span>
+                <span class="score-pct text-amber">81.5% on-time</span>
+              </div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill fill-amber" style="width: 81.5%;"></div></div>
+            </div>
+
+            <div class="dept-score-item">
+              <div class="dept-name-row">
+                <span>🧹 Municipal Solid Waste & Drainage Cell</span>
+                <span class="score-pct text-green">87.4% on-time</span>
+              </div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill fill-green" style="width: 87.4%;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Report Issue Wizard Modal -->
+  <div class="modal-backdrop" id="reportModalBackdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-box">
+          <span class="modal-icon">📷</span>
+          <div>
+            <h3>Report Civic Issue</h3>
+            <span class="modal-sub">Multi-Factor CIPI Verification & Geofence Protected</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeReportModalBtn">&times;</button>
+      </div>
+
+      <form id="reportIssueForm" class="modal-body">
+        
+        <!-- Duplicate Warning Alert Box (Hidden by default) -->
+        <div class="duplicate-alert" id="duplicateAlertBox" style="display: none;">
+          <span class="dup-icon">⚠️</span>
+          <div class="dup-content">
+            <strong>Duplicate Incident Detected!</strong>
+            <p id="duplicateAlertText"></p>
+            <button type="button" class="btn btn-sm btn-vouch-instead" id="vouchInsteadBtn">
+              👍 Vouch for Existing Issue Instead
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 1: Category Selection -->
+        <div class="form-section">
+          <label class="form-label required">Select Issue Category</label>
+          <div class="cat-select-grid">
+            <label class="cat-select-card active">
+              <input type="radio" name="category" value="WATER" checked>
+              <span class="card-icon">🚰</span>
+              <span class="card-text">Water & Drainage</span>
+            </label>
+            <label class="cat-select-card">
+              <input type="radio" name="category" value="ROADS">
+              <span class="card-icon">🛣️</span>
+              <span class="card-text">Roads & Potholes</span>
+            </label>
+            <label class="cat-select-card">
+              <input type="radio" name="category" value="ELECTRICITY">
+              <span class="card-icon">⚡</span>
+              <span class="card-text">Power & Wire</span>
+            </label>
+            <label class="cat-select-card">
+              <input type="radio" name="category" value="SANITATION">
+              <span class="card-icon">🧹</span>
+              <span class="card-text">Garbage & Waste</span>
+            </label>
+            <label class="cat-select-card">
+              <input type="radio" name="category" value="SAFETY">
+              <span class="card-icon">🏥</span>
+              <span class="card-text">Public Hazard</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 2: Location & GPS -->
+        <div class="form-section">
+          <div class="section-row">
+            <label class="form-label required">Location & Ward</label>
+            <button type="button" class="btn-gps-locate" id="gpsAutoLocateBtn">
+              📍 Auto-Detect GPS & Geofence
+            </button>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <select id="formWard" required>
+                <option value="Ward 1 - Rampur Rural">Ward 1 - Rampur Rural</option>
+                <option value="Ward 2 - Hospital Zone">Ward 2 - Hospital Zone</option>
+                <option value="Ward 3 - Gandhi Bazaar">Ward 3 - Gandhi Bazaar</option>
+                <option value="Ward 4 - Green Valley Colony">Ward 4 - Green Valley</option>
+              </select>
+            </div>
+            <div class="form-group flex-2">
+              <input type="text" id="formAddress" placeholder="Street, landmark or nearby building..." required>
+            </div>
+          </div>
+          <div class="coords-preview" id="coordsPreview">
+            GPS: <span id="gpsDisplay">17.4350° N, 78.4050° E (Simulated Lock)</span>
+          </div>
+        </div>
+
+        <!-- Step 3: Title & Description with Voice -->
+        <div class="form-section">
+          <div class="section-row">
+            <label class="form-label required">Issue Title</label>
+            <div class="voice-trigger-inline">
+              <button type="button" class="btn-voice-mic" id="voiceMicBtn" title="Speak in Hindi/Telugu/English">
+                🎤 <span id="voiceMicLabel">Voice Input</span>
+              </button>
+            </div>
+          </div>
+          <input type="text" id="formTitle" placeholder="e.g., Burst Drinking Water Pipe causing road flooding" required>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label">Detailed Description / Voice Transcription</label>
+          <textarea id="formDescription" rows="3" placeholder="Explain severity, how long it has been broken, affected households..."></textarea>
+        </div>
+
+        <!-- Step 4: Vulnerability & Hazard Heuristics -->
+        <div class="form-section">
+          <label class="form-label">Critical Proximity Factors (Boosts CIPI Priority)</label>
+          <div class="checkbox-tags">
+            <label class="check-tag">
+              <input type="checkbox" id="checkSchool" value="school">
+              <span>🏫 Near School / Anganwadi (< 200m)</span>
+            </label>
+            <label class="check-tag">
+              <input type="checkbox" id="checkHospital" value="hospital">
+              <span>🏥 Near Hospital / Clinic (< 200m)</span>
+            </label>
+            <label class="check-tag">
+              <input type="checkbox" id="checkHighway" value="arterial">
+              <span>🚗 Blocks Main Arterial Highway / Bus Route</span>
+            </label>
+            <label class="check-tag">
+              <input type="checkbox" id="checkDrinking" value="drinking">
+              <span>💧 Contaminates Drinking Water Source</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 5: Visual Evidence Photo -->
+        <div class="form-section">
+          <label class="form-label required">Live Camera / Photo Proof</label>
+          <div class="photo-upload-box" id="photoDropArea">
+            <input type="file" id="formPhotoFile" accept="image/*" style="display: none;">
+            <div class="upload-placeholder" id="uploadPlaceholder">
+              <span class="upload-icon">📷</span>
+              <p>Click to snap camera photo or choose file</p>
+              <span class="upload-sub">EXIF Geotag automatically cross-verified</span>
+            </div>
+            <img id="photoPreviewImg" class="photo-preview" style="display: none;" alt="Preview">
+          </div>
+        </div>
+
+        <!-- Live CIPI Dynamic Calculator Badge -->
+        <div class="cipi-preview-box">
+          <div class="cipi-preview-left">
+            <span class="cipi-title-sm">Calculated CIPI™ Priority Score</span>
+            <div class="cipi-score-badge" id="previewCipiBadge">
+              <span id="previewCipiNumber">78</span> / 100
+            </div>
+          </div>
+          <div class="cipi-preview-right">
+            <div class="sla-target-preview">
+              Statutory Resolution SLA: <strong id="previewSlaTarget">12 Hours</strong>
+            </div>
+            <span class="cipi-sub-explain">Auto-routed to responsible department upon submission</span>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelReportBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitReportBtn">
+            <span>🚀 Submit & Alert Authorities</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Incident Detail & Proof-of-Resolution Modal -->
+  <div class="modal-backdrop" id="detailModalBackdrop">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-box">
+          <span class="modal-icon" id="detailModalIcon">🚰</span>
+          <div>
+            <h3 id="detailModalTitle">Incident Title</h3>
+            <span class="modal-sub" id="detailModalTracking">CIVIC-2026-000</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeDetailModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" id="detailModalBody">
+        <!-- Dynamically injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
